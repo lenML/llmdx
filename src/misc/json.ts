@@ -1,11 +1,16 @@
 export function extractJsonObject(s: string, parser = parsePartialJson) {
   s = s.trim();
-  const match = /```(json)?\s*?([\s\S]+?)```/s.exec(s);
-  if (!match) {
-    return parser(s);
-  } else {
-    return parser(match[2]);
+  const patterns = [
+    () => /```(json)?\s*?([\s\S]+?)```/s.exec(s)?.[2],
+    () => /```(json)?\s*?([\s\S]+)/s.exec(s)?.[2],
+    () => /```([\s\S]+)/s.exec(s)?.[1],
+    () => /{[\s\S]+/s.exec(s)?.[0],
+  ];
+  for (const pattern of patterns) {
+    const result = pattern();
+    if (result) return parser(result);
   }
+  return parser(s);
 }
 
 // Adapted from https://github.com/KillianLucas/open-interpreter/blob/main/interpreter/core/llm/utils/parse_partial_json.py

@@ -51,7 +51,7 @@ export class TaskRunner<
 
   async execute_chat() {
     const { task } = this.config;
-    const { history, system_prompt, metadata } = task;
+    const { history, system_prompt, metadata, json_schema } = task;
     const messages: any[] = [];
     const prompt = this.render_template();
 
@@ -69,6 +69,13 @@ export class TaskRunner<
       max_tokens: metadata.max_tokens,
       presence_penalty: metadata.presence_penalty,
       frequency_penalty: metadata.frequency_penalty,
+
+      response_format: json_schema
+        ? {
+            type: "json_schema",
+            json_schema,
+          }
+        : { type: "text" },
     });
     const content = resp.choices[0].message.content ?? "";
     return {
@@ -79,8 +86,14 @@ export class TaskRunner<
 
   async execute_completion() {
     const { task } = this.config;
-    const { metadata } = task;
+    const { metadata, json_schema } = task;
     const prompt = this.render_template();
+
+    if (json_schema) {
+      console.warn(
+        "Warning: JSON schema is not supported in completion mode yet."
+      );
+    }
 
     const resp = await this.client.completions.create({
       model: this.model_name,
