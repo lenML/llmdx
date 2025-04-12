@@ -86,7 +86,6 @@ export class TaskDocument extends DocumentBase {
       if (message.type !== "code") continue;
       const { content, meta = "" } = message;
       const { role } = parse_query_string(meta || "");
-      console.log();
       if (typeof role !== "string") continue;
       if (role.toLowerCase() === "system") {
         this.system_prompt = content || "";

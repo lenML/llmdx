@@ -2,10 +2,18 @@ import { TaskDocument } from "./Task";
 import { Template } from "@huggingface/jinja";
 import OpenAI, { ClientOptions } from "openai";
 import { extractJsonObject } from "../misc/json";
+import { RunnerResult } from "./types";
 
-interface RunnerResult {
-  content: string;
-  [key: string]: any;
+// 从输入中分离出 <think></think> 内容
+function parse_thinking(content: string) {
+  const regex = /<think>([\s\S]*?)<\/think>/;
+  const match = content.match(regex);
+  if (match) {
+    const think = match[1].trim();
+    const response = content.replace(regex, "").trim();
+    return { think, response };
+  }
+  return { think: "", response: content };
 }
 
 export class TaskRunner<
@@ -20,7 +28,7 @@ export class TaskRunner<
 
   constructor(
     readonly config: {
-      task: TaskDocument;
+      doc: TaskDocument;
       inputs: Inputs;
       options?: ClientOptions;
     }
@@ -33,30 +41,53 @@ export class TaskRunner<
   }
 
   private init() {
-    const { task, inputs } = this.config;
-    for (const def of task.vars_init) {
+    const { doc, inputs } = this.config;
+    this.states = { ...inputs };
+    for (const def of doc.vars_init) {
       const { key } = def;
       this.states[key] = inputs[key] ?? def.default;
+      // TODO: 缺少类型校验和特别类型检查比如 array enums
     }
   }
 
   render_template() {
     const {
       states,
-      config: { task },
+      config: { doc },
     } = this;
-    const { template } = task;
-    return new Template(template).render(states);
+    const { template } = doc;
+    try {
+      return new Template(template).render(states);
+    } catch (error) {
+      throw new Error(
+        `[${this.config.doc.document_id}]Failed to render template: ${error}`
+      );
+    }
+  }
+
+  render_system_prompt() {
+    const {
+      states,
+      config: { doc },
+    } = this;
+    const { system_prompt } = doc;
+    try {
+      return new Template(system_prompt).render(states);
+    } catch (error) {
+      throw new Error(
+        `[${this.config.doc.document_id}]Failed to render system prompt: ${error}`
+      );
+    }
   }
 
   async execute_chat() {
-    const { task } = this.config;
-    const { history, system_prompt, metadata, json_schema } = task;
+    const { doc } = this.config;
+    const { history, system_prompt, metadata, json_schema } = doc;
     const messages: any[] = [];
     const prompt = this.render_template();
 
     if (system_prompt)
-      messages.push({ role: "system", content: system_prompt });
+      messages.push({ role: "system", content: this.render_system_prompt() });
     if (history) messages.push(...history);
     messages.push({ role: "user", content: prompt });
 
@@ -75,19 +106,25 @@ export class TaskRunner<
             type: "json_schema",
             json_schema,
           }
-        : { type: "text" },
+        : undefined,
     });
     const content = resp.choices[0].message.content ?? "";
     return {
       ...extractJsonObject(content),
       content,
+      ...parse_thinking(content),
     } as RunnerResult;
   }
 
   async execute_completion() {
-    const { task } = this.config;
-    const { metadata, json_schema } = task;
-    const prompt = this.render_template();
+    const { doc } = this.config;
+    const { metadata, json_schema } = doc;
+    const system_prompt = this.render_system_prompt();
+    let prompt = this.render_template();
+    if (system_prompt) {
+      // TODO: 这里的拼接模板应该提供可配置的入口
+      prompt = `${system_prompt}\n---\n${prompt}`;
+    }
 
     if (json_schema) {
       console.warn(
@@ -109,12 +146,13 @@ export class TaskRunner<
     return {
       ...extractJsonObject(content),
       content,
+      ...parse_thinking(content),
     } as RunnerResult;
   }
 
   async execute() {
-    const { task } = this.config;
-    const { metadata } = task;
+    const { doc } = this.config;
+    const { metadata } = doc;
     if (metadata.request === "completion") {
       return this.execute_completion();
     } else {

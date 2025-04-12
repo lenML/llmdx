@@ -1,23 +1,9 @@
-import { MarkdownRenderer } from "../markdown/render";
-import { Block } from "../markdown/types";
-import { deepClone } from "../misc/deepClone";
-import { DocumentBase, MarkdownDocument } from "./Document";
-import { VarInit } from "./types";
-
-interface IWorkflowAttr {
-  name: string;
-  value: any;
-  [key: string]: any;
-}
-
-interface IWorkflowNode {
-  name: string;
-  steps: IWorkflowAttr[];
-}
-
-interface IWorkflow {
-  nodes: IWorkflowNode[];
-}
+import { MarkdownRenderer } from "../../markdown/render";
+import { Block } from "../../markdown/types";
+import { deepClone } from "../../misc/deepClone";
+import { DocumentBase, MarkdownDocument } from "../Document";
+import { VarInit } from "../types";
+import { IWorkflow, IWorkflowStep, IWorkflowNode } from "./types";
 
 export class WorkflowDocument extends DocumentBase {
   intro: string = "";
@@ -73,9 +59,10 @@ export class WorkflowDocument extends DocumentBase {
     }
     function read_list_item_data(input_block: Block) {
       // 这里输入的应该都是 list item
-      const data: IWorkflowAttr = {
+      const data: IWorkflowStep = {
         name: "",
         value: "",
+        entries: [],
       };
       const { content = "", children } = input_block;
       const [name = "", value = ""] = content.split(":") || [];
@@ -85,24 +72,27 @@ export class WorkflowDocument extends DocumentBase {
       for (const child of children) {
         switch (child.type) {
           case "code": {
+            // code 直接作为夫级的 value
             data.value = child.content;
             break;
           }
           case "listItem": {
             const sub_data = read_list_item_data(child);
-            data[sub_data.name] = sub_data.value;
+            data.entries.push(sub_data);
             break;
           }
           case "list": {
-            const sub_lists = child.children.map(read_list_item_data);
-            for (const list_data of sub_lists) {
-              data[list_data.name] = list_data.value;
-              if (!list_data.value) {
-                data[list_data.name] = list_data;
-                delete data[list_data.name].value;
-              }
-              delete data[list_data.name].name;
-            }
+            // const sub_lists = child.children.map(read_list_item_data);
+            // for (const list_data of sub_lists) {
+            //   data[list_data.name] = list_data.value;
+            //   if (!list_data.value) {
+            //     data[list_data.name] = list_data;
+            //     delete data[list_data.name].value;
+            //   }
+            //   delete data[list_data.name].name;
+            // }
+            const list_data = read_list_item_data(child);
+            data.entries.push(...list_data.entries);
             break;
           }
         }

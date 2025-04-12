@@ -12,3 +12,9 @@ export type VarInit = {
   description?: string;
   enums?: any[];
 };
+export interface RunnerResult {
+  content: string;
+  think: string;
+  response: string;
+  [key: string]: any;
+}
