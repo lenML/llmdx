@@ -1,7 +1,10 @@
 # llmdx
 
-**🚧开发中🚧**
+`LLMDX = LLM + Markdown + Developer Experience/Execution`
+
+**🚧 开发中 🚧**  
 **🚧WORK IN PROGRESS🚧**
+
 > Not officially released yet. The following is a simple introduction generated and may not have some functions.
 
 **LLMDX: Scalable, Parameterized LLM Automation with Markdown**
@@ -11,6 +14,7 @@ LLMDX is an advanced tool for deploying and managing LLM-powered services, all c
 A single command (`llmdx -f task1.md task2.md ...`) reads multiple Markdown configuration files, launches endpoints, and connects to your LLM provider of choice. LLMDX can prompt users to complete an initial form, adapting each task based on input parameters, making it easier than ever to deploy complex, customized LLM services.
 
 **Core Features:**
+
 - **Markdown-Powered Configurations**: Define prompts, workflows, and task parameters in Markdown for clarity and simplicity.
 - **Multi-Endpoint Support**: Simultaneously run multiple tasks with separate Markdown configurations, each representing an independent service endpoint.
 - **Parameterized Task Flexibility**: Create interactive tasks with user-input forms to populate dynamic variables, supporting more adaptable workflows.
@@ -20,4 +24,5 @@ A single command (`llmdx -f task1.md task2.md ...`) reads multiple Markdown conf
 LLMDX combines the power of Markdown, parameterized inputs, and flexible service deployment to simplify and enhance LLM workflows, making it an ideal solution for developers and teams looking to build intelligent, dynamic LLM services.
 
 ## LICENSE
+
 GPL-v3
