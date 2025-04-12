@@ -30,47 +30,53 @@ init:
 ---
 
 # 文本冒险
+
 一个基础的文本冒险工作流
-> display用于基础可视化ui比如playground或者终端中
+
+> display 用于基础可视化 ui 比如 playground 或者终端中
 
 # Workflow
 
 ## Initialize
-- execute: `set("player_input", initial_scenario)`
+
+- execute: `player_input = initial_scenario`
 - goto: GenerateTurn
 
 ## GenerateTurn
+
 - task: `generate_story`
-  - params:
+  - inputs:
     - history: history
     - player_input: player_input
   - watch:
     ```js
     // 监听更新状态
     const { think, response } = progress;
-    set("current_story", response);
-    set("story_thinking", think);
+    current_story = response;
+    story_thinking = think;
     ```
 - execute:
   ```js
   // 解析 task 执行结果并调整当前的 workflow states
   const { think, response } = outputs;
-  set("current_story", response);
-  set("story_thinking", think);
-  append("history", {role: "assistant", response});
+  current_story = response;
+  story_thinking = think;
+  history.push({ role: "assistant", content: response });
+  console.log("assistant>", response);
   ```
 - task: `generate_suggestions`
-  - params:
+  - inputs:
     - history: history
 - execute:
   ```js
   // 解析出 suggestions
-  const { suggestions } = outputs;
-  set("next_suggestions", suggestions);
+  next_suggestions = outputs.suggestions;
+  console.log("assistant>", next_suggestions);
   ```
 - goto: GetInput
 
 ## GetInput
+
 - form:
   - input:
     - desc: 你的下一步想法
@@ -78,33 +84,37 @@ init:
   - choice:
     - desc: 选择建议
     - type: enum
-    - enum: suggestions
+    - enum: next_suggestions
 - execute:
   ```js
   const { input, choice } = outputs;
-  set("player_input", choice || input);
+  player_input = choice || input;
   ```
 - goto: GenerateTurn
 
 # Display
-👋 这里是文字冒险游戏，你可以选择你的下一步动作。
----
-{{ history_block }}
-[+](@toggle("show_history"))
 
+## 👋 这里是文字冒险游戏，你可以选择你的下一步动作。
+
+[+history](<@toggle("show_history")>)
+{{ history_block }}
+
+[story]
 {{ current_story }}
 
-next:
+[suggestions]
 {{ choices_block }}
 
-## history_block
+## block:history_block
+
 {% if show_history %}
 {% for msg in history %}
 {{ msg.role }}: {{ msg.content }}
 {% endfor %}
 {% endif %}
 
-## choices_block
+## block:choices_block
+
 {% for choice in choices %}
-[{{ choice }}](@set("player_input",choice))
+{{ loop.index }}. [{{ choice }}](<@set("player_input",choice)>)
 {% endfor %}
