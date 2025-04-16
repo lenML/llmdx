@@ -1,6 +1,6 @@
 {
-  "name": "llmdx",
-  "version": "0.1.1",
+  "name": "@lenml/llmdx",
+  "version": "0.1.2",
   "description": "",
   "main": "dist/main.js",
   "module": "dist/main.mjs",
@@ -20,15 +20,19 @@
   "scripts": {
     "build": "tsup --minify",
     "test": "jest",
-    "dev": "tsx watch"
+    "dev": "tsx watch",
+    "prepublish": "pnpm build"
   },
   "files": [
     "dist",
     "src"
   ],
   "keywords": [],
-  "author": "",
+  "author": "lenml",
   "license": "AGPL-3.0-only",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@huggingface/jinja": "^0.3.3",
     "eventemitter3": "^5.0.1",
