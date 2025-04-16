@@ -3,7 +3,7 @@ type: tool
 id: searx_search
 difficulty: low
 
-engine: v0-1
+engine: 0.1
 
 request: chat
 temperature: 0.4

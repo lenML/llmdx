@@ -3,7 +3,7 @@ type: task
 id: content_compliance
 difficulty: low
 
-engine: v0-1
+engine: 0.1
 
 request: chat
 temperature: 0.4

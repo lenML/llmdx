@@ -3,19 +3,18 @@ type: task
 id: generate_story
 difficulty: high
 
-engine: v0-1
+engine: 0.1
 
 request: chat
-temperature: 0.3
-top_p: 0.5
+temperature: 0.75
+top_p: 0.95
 
 init:
   - key: player_input
     type: string
     default: ""
   - key: history
-    type: array
-    default: []
+    type: history
 ---
 
 # 生成故事
@@ -47,10 +46,4 @@ init:
 
 # Template
 
-[history]
-{% for msg in history %}
-{{ msg.role }}: {{ msg.content }}
-{% endfor %}
-
-[user_message]
 {{ player_input }}

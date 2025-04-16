@@ -3,15 +3,15 @@ type: task
 id: generate_suggestions
 difficulty: high
 
-engine: v0-1
+engine: 0.1
 
 request: chat
-temperature: 0.3
-top_p: 0.5
+temperature: 0.5
+top_p: 0.95
 
 init:
   - key: history
-    type: array
+    type: history
     default: []
 ---
 
@@ -60,12 +60,5 @@ init:
 ```
 
 # Template
-
-[history]
-{% for msg in history %}
-{{ msg.role }}: {{ msg.content }}
-{% endfor %}
-
----
 
 现在，请给我下一步故事的建议。
