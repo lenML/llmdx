@@ -2,6 +2,7 @@ import { ClientOptions } from "openai";
 import { TaskDocument } from "./Task";
 import { TaskRunner } from "./TaskRunner";
 import { ToolDocument } from "./Tool";
+import { BaseRunner } from "./Runner";
 
 function apply_code(
   code: string,
@@ -20,7 +21,7 @@ function apply_code(
 /**
  * tool runner
  */
-export class ToolRunner {
+export class ToolRunner extends BaseRunner {
   protected payload_task: TaskDocument;
   states: Record<string, any> = {};
 
@@ -32,6 +33,7 @@ export class ToolRunner {
       fetch_init?: RequestInit;
     }
   ) {
+    super();
     this.payload_task = config.doc.build_payload_task();
     this.init();
   }
@@ -115,6 +117,7 @@ export class ToolRunner {
             ...this.config.fetch_init?.headers,
             "Content-Type": "application/json",
           },
+          signal: this.__signal,
         });
         const output = await resp.json();
         return output;

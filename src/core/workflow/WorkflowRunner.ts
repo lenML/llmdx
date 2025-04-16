@@ -1,9 +1,13 @@
+import { deepClone } from "../../misc/deepClone";
 import { run_code_with, run_getter_code } from "../../misc/sandbox";
+import { BaseRunner } from "../Runner";
 import { TaskDocument } from "../Task";
 import { TaskRunner } from "../TaskRunner";
+import { InspectorDocument } from "../inspector";
 import { DocumentRegistry } from "./DocumentRegistry";
 import { WorkflowDocument } from "./Workflow";
 import { IWorkflow, IWorkflowStep, IWorkflowNode } from "./types";
+import { EventEmitter } from "eventemitter3";
 
 interface FormDefine {
   title: string;
@@ -17,27 +21,50 @@ interface FormDefine {
   }[];
 }
 
-export class WorkflowRunner {
-  node_stack: {
-    node: IWorkflowNode;
-    step_index: number;
-  }[] = [];
+type NodeStackItem = {
+  node: IWorkflowNode;
+  step_index: number;
+};
+
+interface WorkflowSnapshot {
+  node_stack: NodeStackItem[];
+  is_done: boolean;
+  context: Record<string, any>;
+  states: Record<string, any>;
+}
+
+export class WorkflowRunner extends BaseRunner {
+  node_stack: NodeStackItem[] = [];
   is_done: boolean = false;
 
   context = {} as Record<string, any>;
   states = {} as Record<string, any>;
 
+  events = new EventEmitter<{
+    step_start: [IWorkflowStep, IWorkflowNode];
+    step_done: [IWorkflowStep, IWorkflowNode];
+    step_error: [IWorkflowStep, IWorkflowNode, Error];
+    step_progress: [any, IWorkflowStep, IWorkflowNode];
+
+    start: [];
+    done: [];
+    aborted: [];
+    error: [Error];
+  }>();
+
   constructor(
     readonly config: {
       doc: WorkflowDocument;
       registry: DocumentRegistry;
-      request_input: () => Promise<string> | string;
-      request_form: (
+      inspector?: InspectorDocument;
+      request_input?: () => Promise<string> | string;
+      request_form?: (
         form_def: FormDefine
       ) => Promise<Record<string, any>> | Record<string, any>;
       inputs?: Record<string, any>;
     }
   ) {
+    super();
     this.check_dependencies();
     this.init();
   }
@@ -54,9 +81,36 @@ export class WorkflowRunner {
     return this.top_node()?.node.steps[this.top_node().step_index];
   }
 
+  snapshot() {
+    return deepClone({
+      node_stack: this.node_stack,
+      is_done: this.is_done,
+      context: this.context,
+      states: this.states,
+    }) as WorkflowSnapshot;
+  }
+
+  restore(snapshot: WorkflowSnapshot) {
+    snapshot = deepClone(snapshot);
+    this.node_stack = snapshot.node_stack;
+    this.is_done = snapshot.is_done;
+    this.context = snapshot.context;
+    this.states = snapshot.states;
+  }
+
+  inspect() {
+    if (!this.config.inspector) throw new Error("Missing inspector");
+    return this.config.inspector.render({
+      ...this.context,
+      ...this.states,
+    });
+  }
+
   private init() {
     this.init_node_stack();
     this.init_states();
+    this.__connect(() => (this.is_done = true));
+    this.__connect(() => this.events.removeAllListeners());
   }
 
   private init_states() {
@@ -124,6 +178,7 @@ export class WorkflowRunner {
       doc: task,
       inputs,
     });
+    this.__connect(runner);
     return runner.execute();
   }
 
@@ -147,8 +202,7 @@ export class WorkflowRunner {
   }
 
   async next() {
-    const current_step =
-      this.top_node()?.node.steps[this.top_node().step_index];
+    const current_step = this.current_step();
     if (!current_step) {
       // empty step
       if (this.node_stack.length === 0) {
@@ -160,6 +214,7 @@ export class WorkflowRunner {
     }
     const { name, value, entries } = current_step;
     switch (name.toLowerCase()) {
+      // TODO: tool 调用，应该和task类似
       case "task": {
         const inputs = Object.fromEntries(
           entries
@@ -204,8 +259,12 @@ export class WorkflowRunner {
         return;
       }
       case "wait_input": {
+        if (!this.config.request_input) {
+          throw new Error("Missing request_input callback");
+        }
         const user_input = await this.config.request_input();
         this.context = { user_input };
+        this.states.user_input = user_input;
         break;
       }
       case "if": {
@@ -243,6 +302,9 @@ export class WorkflowRunner {
         return;
       }
       case "form": {
+        if (!this.config.request_form) {
+          throw new Error("Missing request_form callback");
+        }
         // 请求一个表单值
         const fieldset = entries.map((field) => ({
           name: field.name,
@@ -280,8 +342,26 @@ export class WorkflowRunner {
   }
 
   async execute() {
+    this.events.emit("start");
     while (!this.is_done) {
-      await this.next();
+      const node = this.current_node();
+      const step = this.current_step();
+      this.events.emit("step_start", step, node);
+      try {
+        await this.next();
+        this.events.emit("step_done", step, node);
+      } catch (error) {
+        this.events.emit("step_error", step, node, error as Error);
+        this.__do_abort();
+        this.events.emit("error", error as Error);
+        throw error;
+      }
     }
+    this.events.emit("done");
+  }
+
+  async exit() {
+    this.__do_abort();
+    this.events.emit("aborted");
   }
 }

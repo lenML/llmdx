@@ -31,6 +31,8 @@ export class TaskDocument extends DocumentBase {
 
   vars_init: VarInit[] = [];
 
+  init_code: string = "";
+
   constructor(content: string) {
     super(content);
     this.read_document();
@@ -74,12 +76,15 @@ export class TaskDocument extends DocumentBase {
     const system_prompt = get_section("SYSTEM PROMPT");
     const history = get_section("HISTORY");
     const template = get_section("TEMPLATE");
+    const init = get_section("INIT");
     const json_schema = get_section("JSON SCHEMA");
 
     this.intro = render_block(intro);
     this.desc = render_block(desc);
     this.system_prompt = render_block(system_prompt);
     this.template = render_block(template);
+    this.init_code =
+      init?.children.find((x) => x.type === "code")?.content || "";
 
     const history_messages: any[] = [];
     for (const message of history?.children || []) {

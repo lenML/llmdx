@@ -2,6 +2,7 @@ import matter from "gray-matter";
 import { ToolDocument } from "./Tool";
 import { TaskDocument } from "./Task";
 import { WorkflowDocument } from "./workflow/Workflow";
+import { InspectorDocument } from "./inspector/Inspector";
 
 export class AutoDocument {
   static from(content: string) {
@@ -15,6 +16,8 @@ export class AutoDocument {
         return new TaskDocument(content);
       case "workflow":
         return new WorkflowDocument(content);
+      case "inspector":
+        return new InspectorDocument(content);
       default:
         throw new Error(`Unknown document type: ${type}`);
     }

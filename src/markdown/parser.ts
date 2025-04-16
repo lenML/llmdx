@@ -13,22 +13,28 @@ import type {
   ListItem,
   Text,
   InlineCode,
+  Break,
 } from "mdast";
 import { Block } from "./types";
 
 // --- Helper function to extract text content from phrasing nodes ---
 function extractNodeText(node: Content | ListItem): string {
   let text = "";
+  // TODO: 最好保留 inlineCode 信息更好点
   visit(
     node,
-    ["text", "inlineCode"] as string[],
-    (child: Text | InlineCode) => {
+    ["text", "inlineCode", "break"] as string[],
+    (child: Text | InlineCode | Break) => {
+      if (child.type === "break") {
+        text += "\n";
+        return;
+      }
       if (child.value && typeof child.value === "string") {
         text += child.value;
       }
     }
   );
-  return text.trim();
+  return text;
 }
 
 // --- The Transformer Class ---
@@ -97,6 +103,10 @@ export class BlockTransformer {
       case "thematicBreak":
         // Thematic breaks act like distinct blocks, interrupting paragraph merging
         this.addBlock({ type: "thematicBreak", children: [] });
+        break;
+      case "html":
+        // HTML => plain text
+        this.addBlock({ type: "paragraph", content: node.value, children: [] });
         break;
       default:
         // console.log("Ignoring node type:", node.type);

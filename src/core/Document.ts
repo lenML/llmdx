@@ -31,8 +31,8 @@ export class DocumentBase {
   metadata: Record<string, any> = {};
   id = uuidv4();
 
-  constructor(content: string) {
-    this.document = MarkdownDocument.from(content);
+  constructor(readonly _raw: string) {
+    this.document = MarkdownDocument.from(_raw);
 
     this.check_metadata();
   }
