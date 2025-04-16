@@ -2,15 +2,33 @@
   "name": "llmdx",
   "version": "0.1.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/main.js",
+  "module": "dist/main.mjs",
+  "types": "dist/main.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/main.mjs",
+      "require": "./dist/main.js",
+      "types": "./dist/main.d.ts",
+      "default": "./dist/main.mjs"
+    },
+    "./src/main.ts": {
+      "default": "./src/main.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "build": "tsup --minify",
     "test": "jest",
     "dev": "tsx watch"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "dependencies": {
     "@huggingface/jinja": "^0.3.3",
     "eventemitter3": "^5.0.1",
