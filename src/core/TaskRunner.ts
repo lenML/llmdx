@@ -35,6 +35,7 @@ export class TaskRunner<
       doc: TaskDocument;
       inputs: Inputs;
       options?: ClientOptions;
+      httpAgent?: any;
     }
   ) {
     super();
@@ -42,6 +43,7 @@ export class TaskRunner<
       ...TaskRunner.client_options,
       ...config.options,
       dangerouslyAllowBrowser: true,
+      httpAgent: config.httpAgent,
     });
     this.init();
     this.run_init_code();
