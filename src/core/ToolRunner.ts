@@ -3,6 +3,7 @@ import { TaskDocument } from "./Task";
 import { TaskRunner } from "./TaskRunner";
 import { ToolDocument } from "./Tool";
 import { BaseRunner } from "./Runner";
+import { OpenAICompatibleConfig } from "./types.api";
 
 function apply_code(
   code: string,
@@ -58,15 +59,15 @@ export class ToolRunner extends BaseRunner {
 
   request_payload({
     inputs,
-    options,
+    api_config,
   }: {
     inputs: Record<string, any>;
-    options?: ClientOptions;
+    api_config?: OpenAICompatibleConfig;
   }) {
     const runner = new TaskRunner({
       doc: this.payload_task,
       inputs,
-      options,
+      api_config,
     });
     return runner.execute();
   }

@@ -6,6 +6,7 @@ import { RunnerResult } from "./types";
 import { isNone } from "../misc/isNone";
 import { run_code_with } from "../misc/sandbox";
 import { BaseRunner } from "./Runner";
+import { OpenAICompatibleConfig } from "./types.api";
 
 // 从输入中分离出 <think></think> 内容
 function parse_thinking(content: string) {
@@ -34,17 +35,18 @@ export class TaskRunner<
     readonly config: {
       doc: TaskDocument;
       inputs: Inputs;
-      options?: ClientOptions;
-      httpAgent?: any;
+      api_config?: OpenAICompatibleConfig;
     }
   ) {
     super();
     this.client = new OpenAI({
       ...TaskRunner.client_options,
-      ...config.options,
       dangerouslyAllowBrowser: true,
-      httpAgent: config.httpAgent,
+      ...config.api_config?.client_options,
     });
+    if (config.api_config?.model_name) {
+      this.model_name = config.api_config.model_name;
+    }
     this.init();
     this.run_init_code();
     this.validate();
@@ -144,7 +146,7 @@ export class TaskRunner<
   }
 
   async execute_chat() {
-    const { doc } = this.config;
+    const { doc, api_config: { completions_options = {} } = {} } = this.config;
     const { history, system_prompt, metadata, json_schema } = doc;
     const messages: any[] = [];
     const prompt = this.render_template();
@@ -158,18 +160,29 @@ export class TaskRunner<
 
     const is_deepseek_api = this.client.baseURL.includes("api.deepseek.com");
 
+    const get_param = (
+      k: keyof OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+    ) => completions_options?.[k] ?? metadata?.[k];
+
     const resp = await this.client.chat.completions.create(
       {
         model: this.model_name,
         messages,
 
-        temperature: metadata.temperature,
-        top_p: metadata.top_p,
-        max_tokens: metadata.max_tokens,
-        presence_penalty: metadata.presence_penalty,
-        frequency_penalty: metadata.frequency_penalty,
+        temperature: get_param("temperature"),
+        top_p: get_param("top_p"),
+        max_tokens: get_param("max_tokens"),
+        max_completion_tokens: get_param("max_completion_tokens"),
+        frequency_penalty: get_param("frequency_penalty"),
+        presence_penalty: get_param("presence_penalty"),
+        seed: get_param("seed"),
+        stop: get_param("stop"),
+        n: get_param("n"),
 
-        response_format: json_schema
+        // 如果传了 completions_options.response_format 就覆盖，否则走默认逻辑
+        response_format: completions_options.response_format
+          ? completions_options.response_format
+          : json_schema
           ? is_deepseek_api
             ? // deepseek 只支持 object
               // ref: https://api-docs.deepseek.com/zh-cn/api/create-chat-completion
